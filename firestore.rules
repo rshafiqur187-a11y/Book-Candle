@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public read for products so the website can display them
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if true; // In a real app, restrict this to admin only
+    }
+    
+    // Allow public create for orders so customers can checkout
+    match /orders/{orderId} {
+      allow create: if true;
+      allow read, update, delete: if true; // In a real app, restrict this to admin only
+    }
+
+    match /bot_admins/{chatId} {
+      allow read, write: if true;
+    }
+  }
+}
