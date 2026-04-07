@@ -3,7 +3,7 @@ import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import cors from 'cors';
 import TelegramBot from 'node-telegram-bot-api';
-import { collection, addDoc, getDocs, updateDoc, doc, deleteDoc, query, where, setDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, updateDoc, doc, deleteDoc, query, where, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from './src/lib/firebase';
 
 const PORT = 3000;
@@ -274,6 +274,35 @@ function sendOrderToAdmin(chatId: number, orderId: string, order: any) {
     }
   });
 }
+
+// Listen for new orders in Firestore
+const ordersRef = collection(db, 'orders');
+onSnapshot(ordersRef, (snapshot) => {
+  snapshot.docChanges().forEach(async (change) => {
+    if (change.type === 'added') {
+      const order = change.doc.data();
+      const orderId = change.doc.id;
+      
+      // Only notify if not already notified
+      if (!order.notified) {
+        try {
+          const adminsSnapshot = await getDocs(collection(db, 'bot_admins'));
+          adminsSnapshot.forEach(docSnap => {
+            const chatId = parseInt(docSnap.id, 10);
+            if (!isNaN(chatId)) {
+              sendOrderToAdmin(chatId, orderId, order);
+            }
+          });
+          
+          // Mark as notified
+          await updateDoc(doc(db, 'orders', orderId), { notified: true });
+        } catch (error) {
+          console.error("Error notifying admins:", error);
+        }
+      }
+    }
+  });
+});
 
 async function startServer() {
   const app = express();

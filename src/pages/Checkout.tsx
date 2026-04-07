@@ -3,6 +3,8 @@ import { useCart } from '../lib/store';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { CheckCircle2, ArrowLeft } from 'lucide-react';
+import { db } from '../lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 export default function Checkout() {
   const { cart, total, clearCart } = useCart();
@@ -45,31 +47,26 @@ export default function Checkout() {
       })),
       subtotal: total,
       deliveryCharge,
-      total: finalTotal
+      total: finalTotal,
+      status: 'pending',
+      createdAt: new Date().toISOString()
     };
 
     try {
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderData)
-      });
+      await addDoc(collection(db, 'orders'), orderData);
       
-      if (res.ok) {
-        setSuccess(true);
-        clearCart();
-        
-        if (window.fbq) {
-          window.fbq('track', 'Purchase', {
-            value: total,
-            currency: 'BDT'
-          });
-        }
-      } else {
-        alert('Failed to place order. Please try again.');
+      setSuccess(true);
+      clearCart();
+      
+      if (window.fbq) {
+        window.fbq('track', 'Purchase', {
+          value: total,
+          currency: 'BDT'
+        });
       }
     } catch (e) {
-      alert('Network error. Please try again.');
+      console.error("Order error:", e);
+      alert('Failed to place order. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -5,6 +5,7 @@ import { Product } from '../lib/store';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Star, Search } from 'lucide-react';
+import { getMediaUrl } from '../lib/config';
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -76,13 +77,13 @@ export default function Products() {
               <div className="relative aspect-[3/4] rounded-2xl overflow-hidden mb-4 bg-stone-200 shadow-md group-hover:shadow-xl transition-all duration-300">
                 {product.mediaType === 'video' ? (
                   <video 
-                    src={product.image} 
+                    src={getMediaUrl(product.image)} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     autoPlay loop muted playsInline
                   />
                 ) : (
                   <img 
-                    src={product.image} 
+                    src={getMediaUrl(product.image)} 
                     alt={product.title} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     referrerPolicy="no-referrer"

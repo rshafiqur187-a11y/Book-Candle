@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { Product, useCart } from '../lib/store';
 import { motion } from 'motion/react';
 import { ShoppingBag, ArrowLeft, Star, Truck, ShieldCheck } from 'lucide-react';
+import { getMediaUrl } from '../lib/config';
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
@@ -84,13 +85,13 @@ export default function ProductDetails() {
         >
           {product.mediaType === 'video' ? (
             <video 
-              src={product.image} 
+              src={getMediaUrl(product.image)} 
               className="w-full h-full object-cover"
               autoPlay loop muted playsInline
             />
           ) : (
             <img 
-              src={product.image} 
+              src={getMediaUrl(product.image)} 
               alt={product.title} 
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
@@ -126,7 +127,7 @@ export default function ProductDetails() {
             )}
           </div>
 
-          <p className="text-lg text-stone-600 mb-10 leading-relaxed">
+          <p className="text-lg text-stone-600 mb-10 leading-relaxed whitespace-pre-wrap">
             {product.description}
           </p>
 
