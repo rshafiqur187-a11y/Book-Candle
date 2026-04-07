@@ -83,12 +83,20 @@ export default function Home() {
             >
               <Link to={`/product/${product.id}`} className="group block">
                 <div className="relative aspect-[3/4] rounded-2xl overflow-hidden mb-4 bg-stone-200 shadow-md group-hover:shadow-xl transition-all duration-300">
-                  <img 
-                    src={product.image} 
-                    alt={product.title} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    referrerPolicy="no-referrer"
-                  />
+                  {product.mediaType === 'video' ? (
+                    <video 
+                      src={product.image} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      autoPlay loop muted playsInline
+                    />
+                  ) : (
+                    <img 
+                      src={product.image} 
+                      alt={product.title} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
                   {product.discount > 0 && (
                     <div className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">
                       -{product.discount}%

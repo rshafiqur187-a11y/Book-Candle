@@ -55,6 +55,15 @@ export default function ProductDetails() {
     addToCart(product);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
+
+    if (window.fbq) {
+      window.fbq('track', 'AddToCart', {
+        content_ids: [product.id],
+        content_name: product.title,
+        value: discountedPrice,
+        currency: 'BDT'
+      });
+    }
   };
 
   const discountedPrice = product.discount > 0 
@@ -73,12 +82,20 @@ export default function ProductDetails() {
           animate={{ opacity: 1, x: 0 }}
           className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-stone-200 shadow-2xl"
         >
-          <img 
-            src={product.image} 
-            alt={product.title} 
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
+          {product.mediaType === 'video' ? (
+            <video 
+              src={product.image} 
+              className="w-full h-full object-cover"
+              autoPlay loop muted playsInline
+            />
+          ) : (
+            <img 
+              src={product.image} 
+              alt={product.title} 
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          )}
           {product.discount > 0 && (
             <div className="absolute top-6 left-6 bg-red-500 text-white text-sm font-bold px-4 py-2 rounded-full shadow-lg">
               Save {product.discount}%

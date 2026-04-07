@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
-import { ShoppingBag, BookOpen, Menu, X } from 'lucide-react';
+import { ShoppingBag, Menu, X } from 'lucide-react';
 import { useCart } from '../lib/store';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import CartDrawer from './CartDrawer';
+import Logo from './Logo';
 
 export default function Navbar() {
   const { cart } = useCart();
@@ -18,10 +19,8 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center">
-              <Link to="/" className="flex items-center gap-2 group">
-                <div className="bg-stone-900 text-[#faf9f6] p-2 rounded-lg group-hover:bg-amber-700 transition-colors">
-                  <BookOpen size={24} />
-                </div>
+              <Link to="/" className="flex items-center gap-3 group">
+                <Logo className="w-12 h-12 rounded-xl shadow-sm group-hover:scale-105 transition-transform duration-300" />
                 <span className="font-serif text-2xl font-bold tracking-tight text-stone-900">BooK Candle</span>
               </Link>
             </div>

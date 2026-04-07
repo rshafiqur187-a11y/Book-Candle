@@ -7,6 +7,7 @@ export interface Product {
   discount: number;
   description: string;
   image: string;
+  mediaType?: 'image' | 'video';
 }
 
 export interface CartItem extends Product {

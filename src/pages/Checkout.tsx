@@ -58,6 +58,13 @@ export default function Checkout() {
       if (res.ok) {
         setSuccess(true);
         clearCart();
+        
+        if (window.fbq) {
+          window.fbq('track', 'Purchase', {
+            value: total,
+            currency: 'BDT'
+          });
+        }
       } else {
         alert('Failed to place order. Please try again.');
       }
@@ -257,7 +264,11 @@ export default function Checkout() {
             <div className="space-y-4 mb-8 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
               {cart.map(item => (
                 <div key={item.id} className="flex gap-4">
-                  <img src={item.image} alt={item.title} className="w-16 h-20 object-cover rounded-lg bg-stone-800" />
+                  {item.mediaType === 'video' ? (
+                    <video src={item.image} className="w-16 h-20 object-cover rounded-lg bg-stone-800" autoPlay loop muted playsInline />
+                  ) : (
+                    <img src={item.image} alt={item.title} className="w-16 h-20 object-cover rounded-lg bg-stone-800" />
+                  )}
                   <div className="flex-1">
                     <h4 className="font-medium line-clamp-2 text-stone-200">{item.title}</h4>
                     <div className="flex justify-between items-center mt-2 text-sm">

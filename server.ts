@@ -12,6 +12,7 @@ const ADMIN_CODE = 'FRS1';
 
 // Store admin chat IDs in memory for simplicity, or we could store in Firestore
 const adminChats = new Set<number>();
+const pixelSetupState = new Set<number>();
 
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 
@@ -26,7 +27,9 @@ bot.onText(/\/admin/, (msg) => {
 
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
-  const text = msg.text || '';
+  const text = msg.text || msg.caption || '';
+  const photo = msg.photo;
+  const video = msg.video || msg.animation;
 
   let isAdmin = adminChats.has(chatId);
   if (!isAdmin) {
@@ -52,7 +55,7 @@ bot.on('message', async (msg) => {
       reply_markup: {
         keyboard: [
           [{ text: 'Add Product' }, { text: 'List Products' }],
-          [{ text: 'View Orders (Today)' }]
+          [{ text: 'View Orders (Today)' }, { text: 'Pixel Setup' }]
         ],
         resize_keyboard: true
       }
@@ -63,6 +66,27 @@ bot.on('message', async (msg) => {
   if (!isAdmin) return;
 
   // Admin Commands
+  if (pixelSetupState.has(chatId)) {
+    pixelSetupState.delete(chatId);
+    if (text.trim()) {
+      try {
+        await setDoc(doc(db, 'settings', 'pixel'), { id: text.trim() });
+        bot.sendMessage(chatId, '✅ Facebook Pixel ID saved successfully! It is now active on your website.');
+      } catch (e: any) {
+        bot.sendMessage(chatId, '❌ Error saving Pixel ID: ' + e.message);
+      }
+    } else {
+      bot.sendMessage(chatId, '❌ Invalid Pixel ID. Setup cancelled.');
+    }
+    return;
+  }
+
+  if (text === 'Pixel Setup') {
+    pixelSetupState.add(chatId);
+    bot.sendMessage(chatId, 'Please send your Facebook Pixel ID (e.g., 123456789012345):');
+    return;
+  }
+
   if (text === 'List Products') {
     const snapshot = await getDocs(collection(db, 'products'));
     if (snapshot.empty) {
@@ -81,16 +105,33 @@ bot.on('message', async (msg) => {
       });
     });
   } else if (text === 'Add Product') {
-    bot.sendMessage(chatId, 'To add a product, send a message in this format:\n\nADD_PROD\nTitle\nPrice\nDiscount\nDescription\nImageURL\n\nTo edit, use:\nEDIT_PROD\nProductID\nTitle\nPrice\nDiscount\nDescription\nImageURL');
+    bot.sendMessage(chatId, 'To add a product, send a message in this format (You can also attach a photo or video with this text as caption):\n\nADD_PROD\nTitle\nPrice\nDiscount\nDescription\nMediaURL (Optional if media attached)\n\nTo edit, use:\nEDIT_PROD\nProductID\nTitle\nPrice\nDiscount\nDescription\nMediaURL (Optional if media attached)');
   } else if (text.startsWith('ADD_PROD')) {
     const lines = text.split('\n').map(l => l.trim());
-    if (lines.length >= 6) {
+    if (lines.length >= 5) {
       try {
         const title = lines[1];
         const price = Number(lines[2]);
         const discount = Number(lines[3]);
-        const image = lines[lines.length - 1];
-        const description = lines.slice(4, lines.length - 1).join('\n').trim();
+        let image = '';
+        let description = '';
+        let mediaType = 'image';
+
+        if (video) {
+          const fileId = video.file_id;
+          image = `/api/media/${fileId}`;
+          mediaType = 'video';
+          description = lines.slice(4).join('\n').trim();
+        } else if (photo && photo.length > 0) {
+          const fileId = photo[photo.length - 1].file_id;
+          image = `/api/media/${fileId}`;
+          mediaType = 'image';
+          description = lines.slice(4).join('\n').trim();
+        } else {
+          image = lines[lines.length - 1];
+          mediaType = image.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image';
+          description = lines.slice(4, lines.length - 1).join('\n').trim();
+        }
 
         await addDoc(collection(db, 'products'), {
           title,
@@ -98,6 +139,7 @@ bot.on('message', async (msg) => {
           discount,
           description,
           image,
+          mediaType,
           createdAt: new Date().toISOString()
         });
         bot.sendMessage(chatId, 'Product added successfully!');
@@ -109,21 +151,39 @@ bot.on('message', async (msg) => {
     }
   } else if (text.startsWith('EDIT_PROD')) {
     const lines = text.split('\n').map(l => l.trim());
-    if (lines.length >= 7) {
+    if (lines.length >= 6) {
       try {
         const id = lines[1];
         const title = lines[2];
         const price = Number(lines[3]);
         const discount = Number(lines[4]);
-        const image = lines[lines.length - 1];
-        const description = lines.slice(5, lines.length - 1).join('\n').trim();
+        let image = '';
+        let description = '';
+        let mediaType = 'image';
+
+        if (video) {
+          const fileId = video.file_id;
+          image = `/api/media/${fileId}`;
+          mediaType = 'video';
+          description = lines.slice(5).join('\n').trim();
+        } else if (photo && photo.length > 0) {
+          const fileId = photo[photo.length - 1].file_id;
+          image = `/api/media/${fileId}`;
+          mediaType = 'image';
+          description = lines.slice(5).join('\n').trim();
+        } else {
+          image = lines[lines.length - 1];
+          mediaType = image.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image';
+          description = lines.slice(5, lines.length - 1).join('\n').trim();
+        }
 
         await updateDoc(doc(db, 'products', id), {
           title,
           price,
           discount,
           description,
-          image
+          image,
+          mediaType
         });
         bot.sendMessage(chatId, 'Product updated successfully!');
       } catch (e: any) {
@@ -132,6 +192,18 @@ bot.on('message', async (msg) => {
     } else {
       bot.sendMessage(chatId, 'Invalid format. Please ensure you provide all fields.');
     }
+  } else if (text === 'View Orders (Today)') {
+    const today = new Date().toISOString().split('T')[0];
+    const snapshot = await getDocs(collection(db, 'orders'));
+    let found = false;
+    snapshot.forEach(docSnap => {
+      const order = docSnap.data();
+      if (order.createdAt && order.createdAt.startsWith(today)) {
+        found = true;
+        sendOrderToAdmin(chatId, docSnap.id, order);
+      }
+    });
+    if (!found) bot.sendMessage(chatId, `No orders found for today (${today}).`);
   } else if (text.match(/^\d{4}-\d{2}-\d{2}$/)) {
     // Date filter for orders
     const dateStr = text;
@@ -145,6 +217,8 @@ bot.on('message', async (msg) => {
       }
     });
     if (!found) bot.sendMessage(chatId, `No orders found for ${dateStr}`);
+  } else if (photo || video) {
+    bot.sendMessage(chatId, '⚠️ You sent a media file without product details.\n\nTo add a product, please upload the image/video and write the details in the **Caption** like this:\n\nADD_PROD\nProduct Title\nPrice\nDiscount\nDescription');
   }
 });
 
@@ -160,17 +234,33 @@ bot.on('callback_query', async (query) => {
   } else if (data.startsWith('confirm_order_')) {
     const id = data.replace('confirm_order_', '');
     await updateDoc(doc(db, 'orders', id), { status: 'confirmed' });
-    bot.sendMessage(chatId, `Order ${id} confirmed.`);
+    bot.sendMessage(chatId, `Order confirmed.`);
   } else if (data.startsWith('reject_order_')) {
     const id = data.replace('reject_order_', '');
     await updateDoc(doc(db, 'orders', id), { status: 'cancelled' });
-    bot.sendMessage(chatId, `Order ${id} cancelled.`);
+    bot.sendMessage(chatId, `Order cancelled.`);
   }
 });
 
 function sendOrderToAdmin(chatId: number, orderId: string, order: any) {
-  const items = order.items.map((i: any) => `${i.title} (x${i.quantity})`).join(', ');
-  const msg = `📦 *New Order!*\n\n*Name:* ${order.name}\n*Phone:* ${order.phone}\n*Address:* ${order.address}\n*Items:* ${items}\n*Payment:* ${order.paymentMethod}\n*TrxID:* ${order.transactionId || 'N/A'}\n*Total:* ${order.total} BDT\n*Status:* ${order.status}`;
+  const itemsList = order.items.map((i: any) => `- ${i.title} (x${i.quantity})`).join('\n');
+  
+  let msg = `📦 *New Order!*\n\n`;
+  msg += `*Full Name:* ${order.name}\n`;
+  msg += `*Phone Number:* ${order.phone}\n`;
+  msg += `*Location:* ${order.location === 'inside' ? 'Inside Dhaka' : 'Outside Dhaka'}\n`;
+  msg += `*Full Address:* ${order.address}\n`;
+  msg += `*Payment Method:* ${order.paymentMethod === 'bkash' ? 'bKash' : 'Cash on Delivery'}\n`;
+  
+  if (order.paymentMethod === 'bkash') {
+    msg += `*bKash Number:* ${order.senderNumber || 'N/A'}\n`;
+    msg += `*Transaction ID:* ${order.transactionId || 'N/A'}\n`;
+  }
+
+  msg += `\n*Items:*\n${itemsList}\n\n`;
+  msg += `*Subtotal:* ${order.subtotal} BDT\n`;
+  msg += `*Delivery Charge:* ${order.deliveryCharge} BDT\n`;
+  msg += `*Total:* ${order.total} BDT`;
   
   bot.sendMessage(chatId, msg, {
     parse_mode: 'Markdown',
@@ -190,19 +280,73 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
+  // API Route for serving Telegram media securely
+  app.get('/api/media/:fileId', (req, res) => {
+    const fileId = req.params.fileId;
+    try {
+      const stream = bot.getFileStream(fileId);
+      stream.on('error', (err) => {
+        console.error('Error fetching media from Telegram:', err);
+        if (!res.headersSent) res.status(500).send('Error fetching media');
+      });
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+      stream.pipe(res);
+    } catch (e) {
+      if (!res.headersSent) res.status(500).send('Error');
+    }
+  });
+
+  // Keep old route for backwards compatibility with existing products
+  app.get('/api/image/:fileId', (req, res) => {
+    const fileId = req.params.fileId;
+    try {
+      const stream = bot.getFileStream(fileId);
+      stream.on('error', (err) => {
+        if (!res.headersSent) res.status(500).send('Error fetching image');
+      });
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+      stream.pipe(res);
+    } catch (e) {
+      if (!res.headersSent) res.status(500).send('Error');
+    }
+  });
+
+  // API Route for Facebook Pixel
+  app.get('/api/pixel', async (req, res) => {
+    try {
+      const pixelDoc = await getDoc(doc(db, 'settings', 'pixel'));
+      if (pixelDoc.exists()) {
+        res.json({ id: pixelDoc.data().id });
+      } else {
+        res.json({ id: null });
+      }
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to fetch pixel' });
+    }
+  });
+
   // API Route for new orders
   app.post('/api/orders', async (req, res) => {
     try {
       const orderData = { ...req.body, status: 'pending', createdAt: new Date().toISOString() };
       const docRef = await addDoc(collection(db, 'orders'), orderData);
       
-      // Notify all admins
-      adminChats.forEach(chatId => {
-        sendOrderToAdmin(chatId, docRef.id, orderData);
-      });
+      // Notify all admins from database
+      try {
+        const adminsSnapshot = await getDocs(collection(db, 'bot_admins'));
+        adminsSnapshot.forEach(docSnap => {
+          const chatId = parseInt(docSnap.id, 10);
+          if (!isNaN(chatId)) {
+            sendOrderToAdmin(chatId, docRef.id, orderData);
+          }
+        });
+      } catch (notifyError) {
+        console.error("Error notifying admins:", notifyError);
+      }
 
       res.json({ success: true, orderId: docRef.id });
     } catch (e) {
+      console.error("Order error:", e);
       res.status(500).json({ success: false, error: 'Failed to place order' });
     }
   });

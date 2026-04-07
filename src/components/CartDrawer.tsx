@@ -45,7 +45,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClo
               ) : (
                 cart.map(item => (
                   <div key={item.id} className="flex gap-4 bg-white p-4 rounded-2xl shadow-sm border border-stone-100">
-                    <img src={item.image} alt={item.title} className="w-20 h-28 object-cover rounded-lg" />
+                    {item.mediaType === 'video' ? (
+                      <video src={item.image} className="w-20 h-28 object-cover rounded-lg" autoPlay loop muted playsInline />
+                    ) : (
+                      <img src={item.image} alt={item.title} className="w-20 h-28 object-cover rounded-lg" />
+                    )}
                     <div className="flex-1 flex flex-col justify-between">
                       <div>
                         <h3 className="font-serif font-bold text-lg leading-tight">{item.title}</h3>

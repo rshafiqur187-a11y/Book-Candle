@@ -10,6 +10,7 @@
         "discount": { "type": "number" },
         "description": { "type": "string" },
         "image": { "type": "string" },
+        "mediaType": { "type": "string" },
         "createdAt": { "type": "string" }
       },
       "required": ["title", "price", "description", "image"]
