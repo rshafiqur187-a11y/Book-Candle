@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
-import { ShoppingBag, Menu, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingBag, Menu, X, Search } from 'lucide-react';
 import { useCart } from '../lib/store';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -10,6 +10,17 @@ export default function Navbar() {
   const { cart } = useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery('');
+      setIsMobileMenuOpen(false);
+    }
+  };
 
   const cartItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -23,6 +34,20 @@ export default function Navbar() {
                 <Logo className="w-12 h-12 rounded-xl shadow-sm group-hover:scale-105 transition-transform duration-300" />
                 <span className="font-serif text-2xl font-bold tracking-tight text-stone-900">BooK Candle</span>
               </Link>
+            </div>
+
+            {/* Search Bar (Desktop) */}
+            <div className="hidden md:block flex-1 max-w-md mx-8">
+              <form onSubmit={handleSearch} className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={20} />
+                <input 
+                  type="text" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products..." 
+                  className="w-full pl-10 pr-4 py-2 bg-stone-100 border-transparent rounded-full focus:bg-white focus:border-amber-300 focus:ring-2 focus:ring-amber-200 transition-all outline-none"
+                />
+              </form>
             </div>
 
             {/* Desktop Menu */}
@@ -73,6 +98,16 @@ export default function Navbar() {
             className="fixed inset-0 z-30 bg-[#faf9f6] pt-24 px-4"
           >
             <div className="flex flex-col gap-6 text-xl font-serif">
+              <form onSubmit={handleSearch} className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" size={20} />
+                <input 
+                  type="text" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search products..." 
+                  className="w-full pl-10 pr-4 py-3 bg-stone-100 border-transparent rounded-xl focus:bg-white focus:border-amber-300 focus:ring-2 focus:ring-amber-200 transition-all outline-none text-base font-sans"
+                />
+              </form>
               <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="border-b border-stone-200 pb-4">Home</Link>
               <Link to="/products" onClick={() => setIsMobileMenuOpen(false)} className="border-b border-stone-200 pb-4">Shop</Link>
             </div>

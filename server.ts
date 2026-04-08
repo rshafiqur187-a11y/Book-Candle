@@ -134,70 +134,17 @@ bot.on('message', async (msg) => {
       });
     });
   } else if (text === 'Add Product') {
-    bot.sendMessage(chatId, 'To add a product, send a message in this format (You can also attach a photo or video with this text as caption):\n\nADD_PROD\nTitle\nPrice\nDiscount\nDescription\nMediaURL (Optional if media attached)\n\nTo edit, use:\nEDIT_PROD\nProductID\nTitle\nPrice\nDiscount\nDescription\nMediaURL (Optional if media attached)');
+    bot.sendMessage(chatId, 'To add a product, send a message in this format (You can also attach a photo or video with this text as caption):\n\nADD_PROD\nTitle\nPrice\nDiscount\nCategory\nDescription\nMediaURL (Optional if media attached)\n\nTo edit, use:\nEDIT_PROD\nProductID\nTitle\nPrice\nDiscount\nCategory\nDescription\nMediaURL (Optional if media attached)\n\nTo announce globally:\nANNOUNCE_GLOBAL\nYour message here...\n\nTo announce in a category:\nANNOUNCE_CATEGORY\nCategory Name\nYour message here...');
   } else if (text.startsWith('ADD_PROD')) {
     const lines = text.split('\n').map(l => l.trim());
-    if (lines.length >= 5) {
+    if (lines.length >= 6) {
       try {
         const title = lines[1];
         const priceStr = lines[2].replace(/[^\d.]/g, '');
         const price = priceStr ? Number(priceStr) : 0;
         const discountStr = lines[3].replace(/[^\d.]/g, '');
         const discount = discountStr ? Number(discountStr) : 0;
-        let image = '';
-        let description = '';
-        let mediaType = 'image';
-
-        if (video) {
-          bot.sendMessage(chatId, 'Uploading video, please wait...');
-          const fileId = video.file_id;
-          const file = await bot.getFile(fileId);
-          const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'mp4';
-          const stream = bot.getFileStream(fileId);
-          image = await uploadToCatbox(stream, `video.${ext}`, `video/${ext}`);
-          mediaType = 'video';
-          description = lines.slice(4).join('\n').trim();
-        } else if (photo && photo.length > 0) {
-          bot.sendMessage(chatId, 'Uploading image, please wait...');
-          const fileId = photo[photo.length - 1].file_id;
-          const file = await bot.getFile(fileId);
-          const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'jpg';
-          const stream = bot.getFileStream(fileId);
-          image = await uploadToCatbox(stream, `image.${ext}`, `image/${ext}`);
-          mediaType = 'image';
-          description = lines.slice(4).join('\n').trim();
-        } else {
-          image = lines[lines.length - 1];
-          mediaType = image.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image';
-          description = lines.slice(4, lines.length - 1).join('\n').trim();
-        }
-
-        await addDoc(collection(db, 'products'), {
-          title,
-          price,
-          discount,
-          description,
-          image,
-          mediaType,
-          createdAt: new Date().toISOString()
-        });
-        bot.sendMessage(chatId, 'Product added successfully!');
-      } catch (e: any) {
-        bot.sendMessage(chatId, 'Error adding product: ' + e.message);
-      }
-    } else {
-      bot.sendMessage(chatId, 'Invalid format. Please ensure you provide all fields.');
-    }
-  } else if (text.startsWith('EDIT_PROD')) {
-    const lines = text.split('\n').map(l => l.trim());
-    if (lines.length >= 6) {
-      try {
-        const id = lines[1];
-        const title = lines[2];
-        const priceStr = lines[3].replace(/[^\d.]/g, '');
-        const price = priceStr ? Number(priceStr) : 0;
-        const discountStr = lines[4].replace(/[^\d.]/g, '');
-        const discount = discountStr ? Number(discountStr) : 0;
+        const category = lines[4];
         let image = '';
         let description = '';
         let mediaType = 'image';
@@ -226,10 +173,67 @@ bot.on('message', async (msg) => {
           description = lines.slice(5, lines.length - 1).join('\n').trim();
         }
 
+        await addDoc(collection(db, 'products'), {
+          title,
+          price,
+          discount,
+          category,
+          description,
+          image,
+          mediaType,
+          createdAt: new Date().toISOString()
+        });
+        bot.sendMessage(chatId, 'Product added successfully!');
+      } catch (e: any) {
+        bot.sendMessage(chatId, 'Error adding product: ' + e.message);
+      }
+    } else {
+      bot.sendMessage(chatId, 'Invalid format. Please ensure you provide all fields including Category.');
+    }
+  } else if (text.startsWith('EDIT_PROD')) {
+    const lines = text.split('\n').map(l => l.trim());
+    if (lines.length >= 7) {
+      try {
+        const id = lines[1];
+        const title = lines[2];
+        const priceStr = lines[3].replace(/[^\d.]/g, '');
+        const price = priceStr ? Number(priceStr) : 0;
+        const discountStr = lines[4].replace(/[^\d.]/g, '');
+        const discount = discountStr ? Number(discountStr) : 0;
+        const category = lines[5];
+        let image = '';
+        let description = '';
+        let mediaType = 'image';
+
+        if (video) {
+          bot.sendMessage(chatId, 'Uploading video, please wait...');
+          const fileId = video.file_id;
+          const file = await bot.getFile(fileId);
+          const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'mp4';
+          const stream = bot.getFileStream(fileId);
+          image = await uploadToCatbox(stream, `video.${ext}`, `video/${ext}`);
+          mediaType = 'video';
+          description = lines.slice(6).join('\n').trim();
+        } else if (photo && photo.length > 0) {
+          bot.sendMessage(chatId, 'Uploading image, please wait...');
+          const fileId = photo[photo.length - 1].file_id;
+          const file = await bot.getFile(fileId);
+          const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'jpg';
+          const stream = bot.getFileStream(fileId);
+          image = await uploadToCatbox(stream, `image.${ext}`, `image/${ext}`);
+          mediaType = 'image';
+          description = lines.slice(6).join('\n').trim();
+        } else {
+          image = lines[lines.length - 1];
+          mediaType = image.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image';
+          description = lines.slice(6, lines.length - 1).join('\n').trim();
+        }
+
         await updateDoc(doc(db, 'products', id), {
           title,
           price,
           discount,
+          category,
           description,
           image,
           mediaType
@@ -239,7 +243,39 @@ bot.on('message', async (msg) => {
         bot.sendMessage(chatId, 'Error updating product: ' + e.message);
       }
     } else {
-      bot.sendMessage(chatId, 'Invalid format. Please ensure you provide all fields.');
+      bot.sendMessage(chatId, 'Invalid format. Please ensure you provide all fields including Category.');
+    }
+  } else if (text.startsWith('ANNOUNCE_GLOBAL')) {
+    const lines = text.split('\n').map(l => l.trim());
+    if (lines.length >= 2) {
+      try {
+        const message = lines.slice(1).join('\n').trim();
+        await addDoc(collection(db, 'announcements'), {
+          type: 'global',
+          message,
+          createdAt: new Date().toISOString()
+        });
+        bot.sendMessage(chatId, 'Global announcement added successfully!');
+      } catch (e: any) {
+        bot.sendMessage(chatId, 'Error adding announcement: ' + e.message);
+      }
+    }
+  } else if (text.startsWith('ANNOUNCE_CATEGORY')) {
+    const lines = text.split('\n').map(l => l.trim());
+    if (lines.length >= 3) {
+      try {
+        const category = lines[1];
+        const message = lines.slice(2).join('\n').trim();
+        await addDoc(collection(db, 'announcements'), {
+          type: 'category',
+          category,
+          message,
+          createdAt: new Date().toISOString()
+        });
+        bot.sendMessage(chatId, `Category announcement added successfully for ${category}!`);
+      } catch (e: any) {
+        bot.sendMessage(chatId, 'Error adding announcement: ' + e.message);
+      }
     }
   } else if (text === 'View Orders (Today)') {
     const today = new Date().toISOString().split('T')[0];

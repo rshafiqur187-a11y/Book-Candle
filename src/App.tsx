@@ -10,6 +10,9 @@ import Home from './pages/Home';
 import Products from './pages/Products';
 import ProductDetails from './pages/ProductDetails';
 import Checkout from './pages/Checkout';
+import Categories from './pages/Categories';
+import CategoryProducts from './pages/CategoryProducts';
+import Search from './pages/Search';
 import PixelTracker from './components/PixelTracker';
 
 export default function App() {
@@ -23,6 +26,9 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/products" element={<Products />} />
+              <Route path="/categories" element={<Categories />} />
+              <Route path="/category/:name" element={<CategoryProducts />} />
+              <Route path="/search" element={<Search />} />
               <Route path="/product/:id" element={<ProductDetails />} />
               <Route path="/checkout" element={<Checkout />} />
             </Routes>

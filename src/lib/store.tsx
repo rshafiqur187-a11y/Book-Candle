@@ -5,6 +5,7 @@ export interface Product {
   title: string;
   price: number;
   discount: number;
+  category?: string;
   description: string;
   image: string;
   mediaType?: 'image' | 'video';
