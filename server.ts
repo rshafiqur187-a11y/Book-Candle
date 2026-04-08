@@ -148,18 +148,25 @@ bot.on('message', async (msg) => {
         descLines.push(line);
         continue;
       }
-      const lowerLine = line.toLowerCase();
-      if (lowerLine.startsWith('id:')) id = line.substring(3).trim();
-      else if (lowerLine.startsWith('title:')) title = line.substring(6).trim();
-      else if (lowerLine.startsWith('price:')) price = Number(line.substring(6).replace(/[^\d.]/g, '')) || 0;
-      else if (lowerLine.startsWith('discount:')) discount = Number(line.substring(9).replace(/[^\d.]/g, '')) || 0;
-      else if (lowerLine.startsWith('category:')) category = line.substring(9).trim();
-      else if (lowerLine.startsWith('image:')) image = line.substring(6).trim();
-      else if (lowerLine.startsWith('video:')) videoUrl = line.substring(6).trim();
-      else if (lowerLine.startsWith('description:')) {
-        parsingDesc = true;
-        const firstLine = line.substring(12).trim();
-        if (firstLine) descLines.push(firstLine);
+      
+      const match = line.match(/^([^:]+):(.*)$/);
+      if (match) {
+        const key = match[1].trim().toLowerCase();
+        const value = match[2].trim();
+        
+        if (key === 'id') id = value;
+        else if (key === 'title') title = value;
+        else if (key === 'price') price = Number(value.replace(/[^\d.]/g, '')) || 0;
+        else if (key === 'discount') discount = Number(value.replace(/[^\d.]/g, '')) || 0;
+        else if (key === 'category') category = value;
+        else if (key === 'image') image = value;
+        else if (key === 'video') videoUrl = value;
+        else if (key === 'description') {
+          parsingDesc = true;
+          if (value) descLines.push(value);
+        }
+      } else if (line.toLowerCase().startsWith('description')) {
+         parsingDesc = true;
       }
     }
     description = descLines.join('\n').trim();
