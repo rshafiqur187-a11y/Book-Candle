@@ -105,33 +105,20 @@ bot.on('message', async (msg) => {
       });
     });
   } else if (text === 'Add Product') {
-    bot.sendMessage(chatId, 'To add a product, send a message in this format (You can also attach a photo or video with this text as caption):\n\nADD_PROD\nTitle\nPrice\nDiscount\nDescription\nMediaURL (Optional if media attached)\n\nTo edit, use:\nEDIT_PROD\nProductID\nTitle\nPrice\nDiscount\nDescription\nMediaURL (Optional if media attached)');
+    bot.sendMessage(chatId, 'To add a product, send a message EXACTLY in this format:\n\nADD_PROD\nTitle\nPrice\nDiscount\nImage or Video Link\nDescription\n\nExample:\nADD_PROD\nRose Candle\n500\n10\nhttps://example.com/image.jpg\nBeautiful rose scented candle.\n\nTo edit, use:\nEDIT_PROD\nProductID\nTitle\nPrice\nDiscount\nImage or Video Link\nDescription');
   } else if (text.startsWith('ADD_PROD')) {
     const lines = text.split('\n').map(l => l.trim());
-    if (lines.length >= 5) {
+    if (lines.length >= 6) {
       try {
         const title = lines[1];
-        const price = Number(lines[2]);
-        const discount = Number(lines[3]);
-        let image = '';
-        let description = '';
-        let mediaType = 'image';
-
-        if (video) {
-          const fileId = video.file_id;
-          image = `/api/media/${fileId}`;
-          mediaType = 'video';
-          description = lines.slice(4).join('\n').trim();
-        } else if (photo && photo.length > 0) {
-          const fileId = photo[photo.length - 1].file_id;
-          image = `/api/media/${fileId}`;
-          mediaType = 'image';
-          description = lines.slice(4).join('\n').trim();
-        } else {
-          image = lines[lines.length - 1];
-          mediaType = image.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image';
-          description = lines.slice(4, lines.length - 1).join('\n').trim();
-        }
+        const priceStr = lines[2].replace(/[^\d.]/g, '');
+        const price = priceStr ? Number(priceStr) : 0;
+        const discountStr = lines[3].replace(/[^\d.]/g, '');
+        const discount = discountStr ? Number(discountStr) : 0;
+        
+        const image = lines[4];
+        const mediaType = (image.match(/\.(mp4|webm|ogg)$/i) || image.includes('video')) ? 'video' : 'image';
+        const description = lines.slice(5).join('\n').trim();
 
         await addDoc(collection(db, 'products'), {
           title,
@@ -147,35 +134,22 @@ bot.on('message', async (msg) => {
         bot.sendMessage(chatId, 'Error adding product: ' + e.message);
       }
     } else {
-      bot.sendMessage(chatId, 'Invalid format. Please ensure you provide all fields.');
+      bot.sendMessage(chatId, 'Invalid format. Please ensure you provide all 6 lines (including ADD_PROD).');
     }
   } else if (text.startsWith('EDIT_PROD')) {
     const lines = text.split('\n').map(l => l.trim());
-    if (lines.length >= 6) {
+    if (lines.length >= 7) {
       try {
         const id = lines[1];
         const title = lines[2];
-        const price = Number(lines[3]);
-        const discount = Number(lines[4]);
-        let image = '';
-        let description = '';
-        let mediaType = 'image';
-
-        if (video) {
-          const fileId = video.file_id;
-          image = `/api/media/${fileId}`;
-          mediaType = 'video';
-          description = lines.slice(5).join('\n').trim();
-        } else if (photo && photo.length > 0) {
-          const fileId = photo[photo.length - 1].file_id;
-          image = `/api/media/${fileId}`;
-          mediaType = 'image';
-          description = lines.slice(5).join('\n').trim();
-        } else {
-          image = lines[lines.length - 1];
-          mediaType = image.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image';
-          description = lines.slice(5, lines.length - 1).join('\n').trim();
-        }
+        const priceStr = lines[3].replace(/[^\d.]/g, '');
+        const price = priceStr ? Number(priceStr) : 0;
+        const discountStr = lines[4].replace(/[^\d.]/g, '');
+        const discount = discountStr ? Number(discountStr) : 0;
+        
+        const image = lines[5];
+        const mediaType = (image.match(/\.(mp4|webm|ogg)$/i) || image.includes('video')) ? 'video' : 'image';
+        const description = lines.slice(6).join('\n').trim();
 
         await updateDoc(doc(db, 'products', id), {
           title,
@@ -310,15 +284,27 @@ async function startServer() {
   app.use(express.json());
 
   // API Route for serving Telegram media securely
-  app.get('/api/media/:fileId', (req, res) => {
+  app.get('/api/media/:fileId', async (req, res) => {
     const fileId = req.params.fileId;
     try {
+      const file = await bot.getFile(fileId);
+      const ext = file.file_path?.split('.').pop()?.toLowerCase();
+      let contentType = 'application/octet-stream';
+      if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
+      else if (ext === 'png') contentType = 'image/png';
+      else if (ext === 'mp4') contentType = 'video/mp4';
+      else if (ext === 'webm') contentType = 'video/webm';
+      else if (ext === 'ogg') contentType = 'video/ogg';
+      else if (ext === 'gif') contentType = 'image/gif';
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+
       const stream = bot.getFileStream(fileId);
       stream.on('error', (err) => {
         console.error('Error fetching media from Telegram:', err);
         if (!res.headersSent) res.status(500).send('Error fetching media');
       });
-      res.setHeader('Cache-Control', 'public, max-age=31536000');
       stream.pipe(res);
     } catch (e) {
       if (!res.headersSent) res.status(500).send('Error');
@@ -326,14 +312,23 @@ async function startServer() {
   });
 
   // Keep old route for backwards compatibility with existing products
-  app.get('/api/image/:fileId', (req, res) => {
+  app.get('/api/image/:fileId', async (req, res) => {
     const fileId = req.params.fileId;
     try {
+      const file = await bot.getFile(fileId);
+      const ext = file.file_path?.split('.').pop()?.toLowerCase();
+      let contentType = 'application/octet-stream';
+      if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
+      else if (ext === 'png') contentType = 'image/png';
+      else if (ext === 'gif') contentType = 'image/gif';
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+
       const stream = bot.getFileStream(fileId);
       stream.on('error', (err) => {
         if (!res.headersSent) res.status(500).send('Error fetching image');
       });
-      res.setHeader('Cache-Control', 'public, max-age=31536000');
       stream.pipe(res);
     } catch (e) {
       if (!res.headersSent) res.status(500).send('Error');
