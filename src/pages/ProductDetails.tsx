@@ -83,11 +83,12 @@ export default function ProductDetails() {
           animate={{ opacity: 1, x: 0 }}
           className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-stone-200 shadow-2xl"
         >
-          {product.mediaType === 'video' ? (
+          {(product.videoUrl || product.mediaType === 'video') ? (
             <video 
-              src={getMediaUrl(product.image)} 
+              src={getMediaUrl(product.videoUrl || product.image)} 
+              poster={product.image !== product.videoUrl ? getMediaUrl(product.image) : undefined}
               className="w-full h-full object-cover"
-              autoPlay loop muted playsInline
+              autoPlay loop muted playsInline controls
             />
           ) : (
             <img 

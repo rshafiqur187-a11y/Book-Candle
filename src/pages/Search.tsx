@@ -59,9 +59,10 @@ export default function Search() {
             >
               <Link to={`/product/${product.id}`} className="group block">
                 <div className="relative aspect-[3/4] rounded-2xl overflow-hidden mb-4 bg-stone-200 shadow-md group-hover:shadow-xl transition-all duration-300">
-                  {product.mediaType === 'video' ? (
+                  {(product.videoUrl || product.mediaType === 'video') ? (
                     <video 
-                      src={product.image} 
+                      src={product.videoUrl || product.image} 
+                      poster={product.image !== product.videoUrl ? product.image : undefined}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       autoPlay loop muted playsInline
                     />

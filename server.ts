@@ -134,116 +134,92 @@ bot.on('message', async (msg) => {
       });
     });
   } else if (text === 'Add Product') {
-    bot.sendMessage(chatId, 'To add a product, send a message in this format (You can also attach a photo or video with this text as caption):\n\nADD_PROD\nTitle\nPrice\nDiscount\nCategory\nDescription\nMediaURL (Optional if media attached)\n\nTo edit, use:\nEDIT_PROD\nProductID\nTitle\nPrice\nDiscount\nCategory\nDescription\nMediaURL (Optional if media attached)\n\nTo announce globally:\nANNOUNCE_GLOBAL\nYour message here...\n\nTo announce in a category:\nANNOUNCE_CATEGORY\nCategory Name\nYour message here...');
-  } else if (text.startsWith('ADD_PROD')) {
-    const lines = text.split('\n').map(l => l.trim());
-    if (lines.length >= 6) {
-      try {
-        const title = lines[1];
-        const priceStr = lines[2].replace(/[^\d.]/g, '');
-        const price = priceStr ? Number(priceStr) : 0;
-        const discountStr = lines[3].replace(/[^\d.]/g, '');
-        const discount = discountStr ? Number(discountStr) : 0;
-        const category = lines[4];
-        let image = '';
-        let description = '';
-        let mediaType = 'image';
+    bot.sendMessage(chatId, 'To add a product, send a message in this format (You can also attach a photo or video with this text as caption):\n\nADD_PROD\nTitle: Book Name\nPrice: 500\nDiscount: 10\nCategory: Fiction\nImage: URL (or attach photo)\nVideo: URL (or attach video)\nDescription:\nYour description here...\n\nTo edit, use EDIT_PROD instead of ADD_PROD and add "ID: ProductID" at the top.');
+  } else if (text.startsWith('ADD_PROD') || text.startsWith('EDIT_PROD')) {
+    const isEdit = text.startsWith('EDIT_PROD');
+    const lines = text.split('\n');
+    let id = '', title = '', price = 0, discount = 0, category = '', image = '', videoUrl = '', description = '';
+    let parsingDesc = false;
+    let descLines = [];
 
-        if (video) {
-          bot.sendMessage(chatId, 'Uploading video, please wait...');
-          const fileId = video.file_id;
-          const file = await bot.getFile(fileId);
-          const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'mp4';
-          const stream = bot.getFileStream(fileId);
-          image = await uploadToCatbox(stream, `video.${ext}`, `video/${ext}`);
-          mediaType = 'video';
-          description = lines.slice(5).join('\n').trim();
-        } else if (photo && photo.length > 0) {
-          bot.sendMessage(chatId, 'Uploading image, please wait...');
-          const fileId = photo[photo.length - 1].file_id;
-          const file = await bot.getFile(fileId);
-          const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'jpg';
-          const stream = bot.getFileStream(fileId);
-          image = await uploadToCatbox(stream, `image.${ext}`, `image/${ext}`);
-          mediaType = 'image';
-          description = lines.slice(5).join('\n').trim();
-        } else {
-          image = lines[lines.length - 1];
-          mediaType = image.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image';
-          description = lines.slice(5, lines.length - 1).join('\n').trim();
-        }
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (parsingDesc) {
+        descLines.push(line);
+        continue;
+      }
+      const lowerLine = line.toLowerCase();
+      if (lowerLine.startsWith('id:')) id = line.substring(3).trim();
+      else if (lowerLine.startsWith('title:')) title = line.substring(6).trim();
+      else if (lowerLine.startsWith('price:')) price = Number(line.substring(6).replace(/[^\d.]/g, '')) || 0;
+      else if (lowerLine.startsWith('discount:')) discount = Number(line.substring(9).replace(/[^\d.]/g, '')) || 0;
+      else if (lowerLine.startsWith('category:')) category = line.substring(9).trim();
+      else if (lowerLine.startsWith('image:')) image = line.substring(6).trim();
+      else if (lowerLine.startsWith('video:')) videoUrl = line.substring(6).trim();
+      else if (lowerLine.startsWith('description:')) {
+        parsingDesc = true;
+        const firstLine = line.substring(12).trim();
+        if (firstLine) descLines.push(firstLine);
+      }
+    }
+    description = descLines.join('\n').trim();
 
+    if (!title || price <= 0) {
+      bot.sendMessage(chatId, '❌ Invalid format. Title and Price are required.');
+      return;
+    }
+    if (isEdit && !id) {
+      bot.sendMessage(chatId, '❌ Product ID is required for editing.');
+      return;
+    }
+
+    try {
+      if (video) {
+        bot.sendMessage(chatId, 'Uploading video, please wait...');
+        const fileId = video.file_id;
+        const file = await bot.getFile(fileId);
+        const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'mp4';
+        const stream = bot.getFileStream(fileId);
+        videoUrl = await uploadToCatbox(stream, `video.${ext}`, `video/${ext}`);
+      } else if (photo && photo.length > 0) {
+        bot.sendMessage(chatId, 'Uploading image, please wait...');
+        const fileId = photo[photo.length - 1].file_id;
+        const file = await bot.getFile(fileId);
+        const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'jpg';
+        const stream = bot.getFileStream(fileId);
+        image = await uploadToCatbox(stream, `image.${ext}`, `image/${ext}`);
+      }
+
+      if (!image && videoUrl) image = videoUrl;
+      if (!image && !videoUrl) {
+         bot.sendMessage(chatId, '❌ You must provide an Image URL, Video URL, or attach a media file.');
+         return;
+      }
+
+      const productData = {
+        title,
+        price,
+        discount,
+        category,
+        description,
+        image,
+        videoUrl,
+        mediaType: videoUrl ? 'video' : 'image',
+        updatedAt: new Date().toISOString()
+      };
+
+      if (isEdit) {
+        await updateDoc(doc(db, 'products', id), productData);
+        bot.sendMessage(chatId, '✅ Product updated successfully!');
+      } else {
         await addDoc(collection(db, 'products'), {
-          title,
-          price,
-          discount,
-          category,
-          description,
-          image,
-          mediaType,
+          ...productData,
           createdAt: new Date().toISOString()
         });
-        bot.sendMessage(chatId, 'Product added successfully!');
-      } catch (e: any) {
-        bot.sendMessage(chatId, 'Error adding product: ' + e.message);
+        bot.sendMessage(chatId, '✅ Product added successfully!');
       }
-    } else {
-      bot.sendMessage(chatId, 'Invalid format. Please ensure you provide all fields including Category.');
-    }
-  } else if (text.startsWith('EDIT_PROD')) {
-    const lines = text.split('\n').map(l => l.trim());
-    if (lines.length >= 7) {
-      try {
-        const id = lines[1];
-        const title = lines[2];
-        const priceStr = lines[3].replace(/[^\d.]/g, '');
-        const price = priceStr ? Number(priceStr) : 0;
-        const discountStr = lines[4].replace(/[^\d.]/g, '');
-        const discount = discountStr ? Number(discountStr) : 0;
-        const category = lines[5];
-        let image = '';
-        let description = '';
-        let mediaType = 'image';
-
-        if (video) {
-          bot.sendMessage(chatId, 'Uploading video, please wait...');
-          const fileId = video.file_id;
-          const file = await bot.getFile(fileId);
-          const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'mp4';
-          const stream = bot.getFileStream(fileId);
-          image = await uploadToCatbox(stream, `video.${ext}`, `video/${ext}`);
-          mediaType = 'video';
-          description = lines.slice(6).join('\n').trim();
-        } else if (photo && photo.length > 0) {
-          bot.sendMessage(chatId, 'Uploading image, please wait...');
-          const fileId = photo[photo.length - 1].file_id;
-          const file = await bot.getFile(fileId);
-          const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'jpg';
-          const stream = bot.getFileStream(fileId);
-          image = await uploadToCatbox(stream, `image.${ext}`, `image/${ext}`);
-          mediaType = 'image';
-          description = lines.slice(6).join('\n').trim();
-        } else {
-          image = lines[lines.length - 1];
-          mediaType = image.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image';
-          description = lines.slice(6, lines.length - 1).join('\n').trim();
-        }
-
-        await updateDoc(doc(db, 'products', id), {
-          title,
-          price,
-          discount,
-          category,
-          description,
-          image,
-          mediaType
-        });
-        bot.sendMessage(chatId, 'Product updated successfully!');
-      } catch (e: any) {
-        bot.sendMessage(chatId, 'Error updating product: ' + e.message);
-      }
-    } else {
-      bot.sendMessage(chatId, 'Invalid format. Please ensure you provide all fields including Category.');
+    } catch (e: any) {
+      bot.sendMessage(chatId, '❌ Error saving product: ' + e.message);
     }
   } else if (text.startsWith('ANNOUNCE_GLOBAL')) {
     const lines = text.split('\n').map(l => l.trim());
