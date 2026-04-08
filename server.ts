@@ -16,6 +16,35 @@ const pixelSetupState = new Set<number>();
 
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 
+import { Readable } from 'stream';
+
+async function streamToBlob(stream: Readable, mimeType: string): Promise<Blob> {
+  const chunks: any[] = [];
+  for await (const chunk of stream) {
+    chunks.push(chunk);
+  }
+  const buffer = Buffer.concat(chunks);
+  return new Blob([buffer], { type: mimeType });
+}
+
+async function uploadToCatbox(stream: NodeJS.ReadableStream, filename: string, mimeType: string): Promise<string> {
+  const blob = await streamToBlob(stream as Readable, mimeType);
+  const formData = new FormData();
+  formData.append('reqtype', 'fileupload');
+  formData.append('fileToUpload', blob, filename);
+
+  const response = await fetch('https://catbox.moe/user/api.php', {
+    method: 'POST',
+    body: formData as any
+  });
+
+  if (!response.ok) {
+    throw new Error(`Catbox upload failed: ${response.statusText}`);
+  }
+
+  return await response.text();
+}
+
 // Telegram Bot Logic
 bot.onText(/\/start/, (msg) => {
   bot.sendMessage(msg.chat.id, 'Welcome to BooK Candle Bot. Type /admin to login as admin.');
@@ -120,13 +149,21 @@ bot.on('message', async (msg) => {
         let mediaType = 'image';
 
         if (video) {
+          bot.sendMessage(chatId, 'Uploading video, please wait...');
           const fileId = video.file_id;
-          image = `/api/media/${fileId}`;
+          const file = await bot.getFile(fileId);
+          const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'mp4';
+          const stream = bot.getFileStream(fileId);
+          image = await uploadToCatbox(stream, `video.${ext}`, `video/${ext}`);
           mediaType = 'video';
           description = lines.slice(4).join('\n').trim();
         } else if (photo && photo.length > 0) {
+          bot.sendMessage(chatId, 'Uploading image, please wait...');
           const fileId = photo[photo.length - 1].file_id;
-          image = `/api/media/${fileId}`;
+          const file = await bot.getFile(fileId);
+          const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'jpg';
+          const stream = bot.getFileStream(fileId);
+          image = await uploadToCatbox(stream, `image.${ext}`, `image/${ext}`);
           mediaType = 'image';
           description = lines.slice(4).join('\n').trim();
         } else {
@@ -166,13 +203,21 @@ bot.on('message', async (msg) => {
         let mediaType = 'image';
 
         if (video) {
+          bot.sendMessage(chatId, 'Uploading video, please wait...');
           const fileId = video.file_id;
-          image = `/api/media/${fileId}`;
+          const file = await bot.getFile(fileId);
+          const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'mp4';
+          const stream = bot.getFileStream(fileId);
+          image = await uploadToCatbox(stream, `video.${ext}`, `video/${ext}`);
           mediaType = 'video';
           description = lines.slice(5).join('\n').trim();
         } else if (photo && photo.length > 0) {
+          bot.sendMessage(chatId, 'Uploading image, please wait...');
           const fileId = photo[photo.length - 1].file_id;
-          image = `/api/media/${fileId}`;
+          const file = await bot.getFile(fileId);
+          const ext = file.file_path?.split('.').pop()?.toLowerCase() || 'jpg';
+          const stream = bot.getFileStream(fileId);
+          image = await uploadToCatbox(stream, `image.${ext}`, `image/${ext}`);
           mediaType = 'image';
           description = lines.slice(5).join('\n').trim();
         } else {
