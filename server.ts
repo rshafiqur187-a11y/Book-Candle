@@ -134,42 +134,56 @@ bot.on('message', async (msg) => {
       });
     });
   } else if (text === 'Add Product') {
-    bot.sendMessage(chatId, 'To add a product, send a message in this format (You can also attach a photo or video with this text as caption):\n\nADD_PROD\nTitle: Book Name\nPrice: 500\nDiscount: 10\nCategory: Fiction\nImage: URL (or attach photo)\nVideo: URL (or attach video)\nDescription:\nYour description here...\n\nTo edit, use EDIT_PROD instead of ADD_PROD and add "ID: ProductID" at the top.');
+    bot.sendMessage(chatId, 'To add a product, the EASIEST way is to ATTACH a photo or video and use this simple format in the caption:\n\nADD_PROD\nBook Name\n500\n10\nFiction\nYour description here...\n\n(Line 1: ADD_PROD, Line 2: Title, Line 3: Price, Line 4: Discount, Line 5: Category, Line 6+: Description)\n\nNote: MediaFire links will NOT work. Please upload directly to Telegram or use Google Drive.');
   } else if (text.startsWith('ADD_PROD') || text.startsWith('EDIT_PROD')) {
     const isEdit = text.startsWith('EDIT_PROD');
     const lines = text.split('\n');
     let id = '', title = '', price = 0, discount = 0, category = '', image = '', videoUrl = '', description = '';
-    let parsingDesc = false;
-    let descLines = [];
+    
+    const isKeyValue = lines.some(l => l.toLowerCase().startsWith('title:'));
 
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-      if (parsingDesc) {
-        descLines.push(line);
-        continue;
-      }
-      
-      const match = line.match(/^([^:]+):(.*)$/);
-      if (match) {
-        const key = match[1].trim().toLowerCase();
-        const value = match[2].trim();
-        
-        if (key === 'id') id = value;
-        else if (key === 'title') title = value;
-        else if (key === 'price') price = Number(value.replace(/[^\d.]/g, '')) || 0;
-        else if (key === 'discount') discount = Number(value.replace(/[^\d.]/g, '')) || 0;
-        else if (key === 'category') category = value;
-        else if (key === 'image') image = value;
-        else if (key === 'video') videoUrl = value;
-        else if (key === 'description') {
-          parsingDesc = true;
-          if (value) descLines.push(value);
+    if (isKeyValue) {
+      let parsingDesc = false;
+      let descLines = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (parsingDesc) {
+          descLines.push(line);
+          continue;
         }
-      } else if (line.toLowerCase().startsWith('description')) {
-         parsingDesc = true;
+        const match = line.match(/^([^:]+):(.*)$/);
+        if (match) {
+          const key = match[1].trim().toLowerCase();
+          const value = match[2].trim();
+          if (key === 'id') id = value;
+          else if (key === 'title') title = value;
+          else if (key === 'price') price = Number(value.replace(/[^\d.]/g, '')) || 0;
+          else if (key === 'discount') discount = Number(value.replace(/[^\d.]/g, '')) || 0;
+          else if (key === 'category') category = value;
+          else if (key === 'image') image = value;
+          else if (key === 'video') videoUrl = value;
+          else if (key === 'description') {
+            parsingDesc = true;
+            if (value) descLines.push(value);
+          }
+        } else if (line.toLowerCase().startsWith('description')) {
+           parsingDesc = true;
+        }
       }
+      description = descLines.join('\n').trim();
+    } else {
+      // Simple line-by-line parsing
+      let offset = 1;
+      if (isEdit) {
+        id = lines[1]?.trim() || '';
+        offset = 2;
+      }
+      title = lines[offset]?.trim() || '';
+      price = Number((lines[offset + 1] || '').replace(/[^\d.]/g, '')) || 0;
+      discount = Number((lines[offset + 2] || '').replace(/[^\d.]/g, '')) || 0;
+      category = lines[offset + 3]?.trim() || '';
+      description = lines.slice(offset + 4).join('\n').trim();
     }
-    description = descLines.join('\n').trim();
 
     if (!title || price <= 0) {
       bot.sendMessage(chatId, '❌ Invalid format. Title and Price are required.');
@@ -177,6 +191,11 @@ bot.on('message', async (msg) => {
     }
     if (isEdit && !id) {
       bot.sendMessage(chatId, '❌ Product ID is required for editing.');
+      return;
+    }
+
+    if (image.includes('mediafire.com') || videoUrl.includes('mediafire.com') || description.includes('mediafire.com')) {
+      bot.sendMessage(chatId, '❌ MediaFire links are NOT supported because they are web pages, not direct files (which causes the white screen). Please ATTACH the photo/video directly to this bot, or use Google Drive links.');
       return;
     }
 
@@ -199,7 +218,7 @@ bot.on('message', async (msg) => {
 
       if (!image && videoUrl) image = videoUrl;
       if (!image && !videoUrl) {
-         bot.sendMessage(chatId, '❌ You must provide an Image URL, Video URL, or attach a media file.');
+         bot.sendMessage(chatId, '❌ You must provide an Image URL, Video URL, or attach a media file directly to the message.');
          return;
       }
 
