@@ -105,20 +105,35 @@ bot.on('message', async (msg) => {
       });
     });
   } else if (text === 'Add Product') {
-    bot.sendMessage(chatId, 'To add a product, send a message EXACTLY in this format:\n\nADD_PROD\nTitle\nPrice\nDiscount\nImage or Video Link\nDescription\n\nExample:\nADD_PROD\nRose Candle\n500\n10\nhttps://example.com/image.jpg\nBeautiful rose scented candle.\n\nTo edit, use:\nEDIT_PROD\nProductID\nTitle\nPrice\nDiscount\nImage or Video Link\nDescription');
+    bot.sendMessage(chatId, 'To add a product, send a message in this format (You can also attach a photo or video with this text as caption):\n\nADD_PROD\nTitle\nPrice\nDiscount\nDescription\nMediaURL (Optional if media attached)\n\nTo edit, use:\nEDIT_PROD\nProductID\nTitle\nPrice\nDiscount\nDescription\nMediaURL (Optional if media attached)');
   } else if (text.startsWith('ADD_PROD')) {
     const lines = text.split('\n').map(l => l.trim());
-    if (lines.length >= 6) {
+    if (lines.length >= 5) {
       try {
         const title = lines[1];
         const priceStr = lines[2].replace(/[^\d.]/g, '');
         const price = priceStr ? Number(priceStr) : 0;
         const discountStr = lines[3].replace(/[^\d.]/g, '');
         const discount = discountStr ? Number(discountStr) : 0;
-        
-        const image = lines[4];
-        const mediaType = (image.match(/\.(mp4|webm|ogg)$/i) || image.includes('video')) ? 'video' : 'image';
-        const description = lines.slice(5).join('\n').trim();
+        let image = '';
+        let description = '';
+        let mediaType = 'image';
+
+        if (video) {
+          const fileId = video.file_id;
+          image = `/api/media/${fileId}`;
+          mediaType = 'video';
+          description = lines.slice(4).join('\n').trim();
+        } else if (photo && photo.length > 0) {
+          const fileId = photo[photo.length - 1].file_id;
+          image = `/api/media/${fileId}`;
+          mediaType = 'image';
+          description = lines.slice(4).join('\n').trim();
+        } else {
+          image = lines[lines.length - 1];
+          mediaType = image.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image';
+          description = lines.slice(4, lines.length - 1).join('\n').trim();
+        }
 
         await addDoc(collection(db, 'products'), {
           title,
@@ -134,11 +149,11 @@ bot.on('message', async (msg) => {
         bot.sendMessage(chatId, 'Error adding product: ' + e.message);
       }
     } else {
-      bot.sendMessage(chatId, 'Invalid format. Please ensure you provide all 6 lines (including ADD_PROD).');
+      bot.sendMessage(chatId, 'Invalid format. Please ensure you provide all fields.');
     }
   } else if (text.startsWith('EDIT_PROD')) {
     const lines = text.split('\n').map(l => l.trim());
-    if (lines.length >= 7) {
+    if (lines.length >= 6) {
       try {
         const id = lines[1];
         const title = lines[2];
@@ -146,10 +161,25 @@ bot.on('message', async (msg) => {
         const price = priceStr ? Number(priceStr) : 0;
         const discountStr = lines[4].replace(/[^\d.]/g, '');
         const discount = discountStr ? Number(discountStr) : 0;
-        
-        const image = lines[5];
-        const mediaType = (image.match(/\.(mp4|webm|ogg)$/i) || image.includes('video')) ? 'video' : 'image';
-        const description = lines.slice(6).join('\n').trim();
+        let image = '';
+        let description = '';
+        let mediaType = 'image';
+
+        if (video) {
+          const fileId = video.file_id;
+          image = `/api/media/${fileId}`;
+          mediaType = 'video';
+          description = lines.slice(5).join('\n').trim();
+        } else if (photo && photo.length > 0) {
+          const fileId = photo[photo.length - 1].file_id;
+          image = `/api/media/${fileId}`;
+          mediaType = 'image';
+          description = lines.slice(5).join('\n').trim();
+        } else {
+          image = lines[lines.length - 1];
+          mediaType = image.match(/\.(mp4|webm|ogg)$/i) ? 'video' : 'image';
+          description = lines.slice(5, lines.length - 1).join('\n').trim();
+        }
 
         await updateDoc(doc(db, 'products', id), {
           title,
