@@ -72,9 +72,7 @@ export default function ProductDetails() {
     : product.price;
 
   return (
-    <>
-      <div className="fixed inset-0 z-[-1] bg-[#faf9f6]" />
-      <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-stone-500 hover:text-stone-900 mb-8 transition-colors">
         <ArrowLeft size={20} /> Back
       </button>
@@ -170,6 +168,5 @@ export default function ProductDetails() {
         </motion.div>
       </div>
     </div>
-    </>
   );
 }

@@ -36,9 +36,7 @@ export default function Search() {
   }, [q]);
 
   return (
-    <>
-      <div className="fixed inset-0 z-[-1] bg-[#faf9f6]" />
-      <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8">
       <div className="flex items-center gap-3 mb-4">
         <SearchIcon size={32} className="text-amber-600" />
         <h1 className="text-4xl font-serif font-bold">Search Results for "{q}"</h1>
@@ -105,6 +103,5 @@ export default function Search() {
         </div>
       )}
     </div>
-    </>
   );
 }

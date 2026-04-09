@@ -54,9 +54,7 @@ export default function CategoryProducts() {
   }
 
   return (
-    <>
-      <div className="fixed inset-0 z-[-1] bg-[#faf9f6]" />
-      <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8">
       <div className="flex items-center gap-4 mb-4">
         <Link to="/categories" className="p-2 hover:bg-stone-200 rounded-full transition-colors">
           <ArrowLeft size={24} />
@@ -145,6 +143,5 @@ export default function CategoryProducts() {
         </div>
       )}
     </div>
-    </>
   );
 }
