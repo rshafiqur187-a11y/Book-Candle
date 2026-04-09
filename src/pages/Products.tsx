@@ -41,7 +41,9 @@ export default function Products() {
   );
 
   return (
-    <div>
+    <>
+      <div className="fixed inset-0 z-[-1] bg-[#faf9f6]" />
+      <div>
       <div className="mb-12 text-center max-w-2xl mx-auto">
         <h1 className="text-5xl font-serif font-bold mb-4">All Books</h1>
         <p className="text-stone-500 text-lg mb-8">Browse our complete collection of premium books, carefully selected for the avid reader.</p>
@@ -119,5 +121,6 @@ export default function Products() {
       </div>
       )}
     </div>
+    </>
   );
 }

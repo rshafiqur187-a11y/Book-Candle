@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { BookOpen } from 'lucide-react';
+import Category3DBackground from '../components/Category3DBackground';
 
 const CATEGORIES = [
   { id: 'fiction', name: 'Fiction', desc: 'Imaginative and creative stories' },
@@ -15,10 +16,13 @@ const CATEGORIES = [
 
 export default function Categories() {
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex items-center gap-3 mb-4">
-        <BookOpen size={32} className="text-amber-600" />
-        <h1 className="text-4xl font-serif font-bold">Book Categories</h1>
+    <div className="flex flex-col gap-12 min-h-screen">
+      <Category3DBackground />
+      
+      <div className="text-center mt-12 mb-8">
+        <BookOpen size={48} className="text-amber-400 mx-auto mb-6 drop-shadow-lg" />
+        <h1 className="text-5xl md:text-6xl font-serif font-bold mb-4 text-white drop-shadow-2xl">Explore Categories</h1>
+        <p className="text-stone-300 max-w-lg mx-auto text-xl drop-shadow-md">Dive into our diverse collection of genres and find your next great adventure.</p>
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -31,12 +35,12 @@ export default function Categories() {
           >
             <Link 
               to={`/category/${encodeURIComponent(category.name)}`}
-              className="block bg-white p-8 rounded-2xl shadow-sm hover:shadow-md border border-stone-100 hover:border-amber-200 transition-all group"
+              className="block bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 hover:bg-white/20 hover:border-amber-400/50 transition-all group shadow-xl"
             >
-              <h2 className="text-2xl font-serif font-bold mb-2 group-hover:text-amber-700 transition-colors">
+              <h2 className="text-2xl font-serif font-bold mb-3 text-white group-hover:text-amber-400 transition-colors">
                 {category.name}
               </h2>
-              <p className="text-stone-500">{category.desc}</p>
+              <p className="text-stone-300">{category.desc}</p>
             </Link>
           </motion.div>
         ))}

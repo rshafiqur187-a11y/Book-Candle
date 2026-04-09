@@ -9,6 +9,7 @@ export interface Product {
   description: string;
   image: string;
   mediaType?: 'image' | 'video';
+  videoUrl?: string;
 }
 
 export interface CartItem extends Product {

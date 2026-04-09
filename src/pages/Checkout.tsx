@@ -74,11 +74,13 @@ export default function Checkout() {
 
   if (success) {
     return (
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="min-h-[60vh] flex flex-col items-center justify-center text-center max-w-md mx-auto"
-      >
+      <>
+        <div className="fixed inset-0 z-[-1] bg-[#faf9f6]" />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="min-h-[60vh] flex flex-col items-center justify-center text-center max-w-md mx-auto"
+        >
         <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-8">
           <CheckCircle2 size={48} />
         </div>
@@ -93,22 +95,28 @@ export default function Checkout() {
           Return to Home
         </button>
       </motion.div>
+      </>
     );
   }
 
   if (cart.length === 0) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+      <>
+        <div className="fixed inset-0 z-[-1] bg-[#faf9f6]" />
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
         <h2 className="text-2xl font-serif font-bold">Your cart is empty</h2>
         <button onClick={() => navigate('/products')} className="text-amber-700 hover:underline flex items-center gap-2">
           <ArrowLeft size={20} /> Back to Shop
         </button>
       </div>
+      </>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <>
+      <div className="fixed inset-0 z-[-1] bg-[#faf9f6]" />
+      <div className="max-w-5xl mx-auto">
       <h1 className="text-4xl font-serif font-bold mb-10">Checkout</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
@@ -308,5 +316,6 @@ export default function Checkout() {
         </div>
       </div>
     </div>
+    </>
   );
 }
