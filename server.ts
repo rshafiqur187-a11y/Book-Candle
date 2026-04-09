@@ -84,7 +84,8 @@ bot.on('message', async (msg) => {
       reply_markup: {
         keyboard: [
           [{ text: 'Add Product' }, { text: 'List Products' }],
-          [{ text: 'View Orders (Today)' }, { text: 'Pixel Setup' }]
+          [{ text: 'View Orders (Today)' }, { text: 'View Announcements' }],
+          [{ text: 'Pixel Setup' }]
         ],
         resize_keyboard: true
       }
@@ -117,22 +118,48 @@ bot.on('message', async (msg) => {
   }
 
   if (text === 'List Products') {
-    const snapshot = await getDocs(collection(db, 'products'));
-    if (snapshot.empty) {
-      bot.sendMessage(chatId, 'No products found.');
-      return;
-    }
-    snapshot.forEach(docSnap => {
-      const p = docSnap.data();
-      bot.sendMessage(chatId, `*${p.title}*\nPrice: ${p.price} BDT\nDiscount: ${p.discount || 0}%\nID: \`${docSnap.id}\``, {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: 'Delete', callback_data: `del_prod_${docSnap.id}` }]
-          ]
-        }
+    try {
+      const snapshot = await getDocs(collection(db, 'products'));
+      if (snapshot.empty) {
+        bot.sendMessage(chatId, 'No products found.');
+        return;
+      }
+      snapshot.forEach(docSnap => {
+        const p = docSnap.data();
+        bot.sendMessage(chatId, `*${p.title}*\nPrice: ${p.price} BDT\nDiscount: ${p.discount || 0}%\nID: \`${docSnap.id}\``, {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: 'Delete', callback_data: `del_prod_${docSnap.id}` }]
+            ]
+          }
+        });
       });
-    });
+    } catch (e: any) {
+      bot.sendMessage(chatId, 'Error fetching products: ' + e.message);
+    }
+  } else if (text === 'View Announcements') {
+    try {
+      const snapshot = await getDocs(collection(db, 'announcements'));
+      if (snapshot.empty) {
+        bot.sendMessage(chatId, 'No active announcements found.');
+        return;
+      }
+      snapshot.forEach(docSnap => {
+        const ann = docSnap.data();
+        const typeText = ann.type === 'global' ? '🌍 Global Announcement' : `📁 Category: ${ann.category}`;
+        bot.sendMessage(chatId, `*${typeText}*\n\n${ann.message}`, {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: 'Delete Announcement', callback_data: `del_ann_${docSnap.id}` }]
+            ]
+          }
+        });
+      });
+    } catch (e: any) {
+      bot.sendMessage(chatId, 'Error fetching announcements: ' + e.message);
+    }
   } else if (text === 'Add Product') {
     bot.sendMessage(chatId, 'To add a product, the EASIEST way is to ATTACH a photo or video and use this simple format in the caption:\n\nADD_PROD\nBook Name\n500\n10\nFiction\nYour description here...\n\n(Line 1: ADD_PROD, Line 2: Title, Line 3: Price, Line 4: Discount, Line 5: Category, Line 6+: Description)\n\nNote: MediaFire links will NOT work. Please upload directly to Telegram or use Google Drive.');
   } else if (text.startsWith('ADD_PROD') || text.startsWith('EDIT_PROD')) {
@@ -280,30 +307,38 @@ bot.on('message', async (msg) => {
       }
     }
   } else if (text === 'View Orders (Today)') {
-    const today = new Date().toISOString().split('T')[0];
-    const snapshot = await getDocs(collection(db, 'orders'));
-    let found = false;
-    snapshot.forEach(docSnap => {
-      const order = docSnap.data();
-      if (order.createdAt && order.createdAt.startsWith(today)) {
-        found = true;
-        sendOrderToAdmin(chatId, docSnap.id, order);
-      }
-    });
-    if (!found) bot.sendMessage(chatId, `No orders found for today (${today}).`);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const snapshot = await getDocs(collection(db, 'orders'));
+      let found = false;
+      snapshot.forEach(docSnap => {
+        const order = docSnap.data();
+        if (order.createdAt && order.createdAt.startsWith(today)) {
+          found = true;
+          sendOrderToAdmin(chatId, docSnap.id, order);
+        }
+      });
+      if (!found) bot.sendMessage(chatId, `No orders found for today (${today}).`);
+    } catch (e: any) {
+      bot.sendMessage(chatId, 'Error fetching orders: ' + e.message);
+    }
   } else if (text.match(/^\d{4}-\d{2}-\d{2}$/)) {
     // Date filter for orders
-    const dateStr = text;
-    const snapshot = await getDocs(collection(db, 'orders'));
-    let found = false;
-    snapshot.forEach(docSnap => {
-      const order = docSnap.data();
-      if (order.createdAt && order.createdAt.startsWith(dateStr)) {
-        found = true;
-        sendOrderToAdmin(chatId, docSnap.id, order);
-      }
-    });
-    if (!found) bot.sendMessage(chatId, `No orders found for ${dateStr}`);
+    try {
+      const dateStr = text;
+      const snapshot = await getDocs(collection(db, 'orders'));
+      let found = false;
+      snapshot.forEach(docSnap => {
+        const order = docSnap.data();
+        if (order.createdAt && order.createdAt.startsWith(dateStr)) {
+          found = true;
+          sendOrderToAdmin(chatId, docSnap.id, order);
+        }
+      });
+      if (!found) bot.sendMessage(chatId, `No orders found for ${dateStr}`);
+    } catch (e: any) {
+      bot.sendMessage(chatId, 'Error fetching orders: ' + e.message);
+    }
   } else if (photo || video) {
     bot.sendMessage(chatId, '⚠️ You sent a media file without product details.\n\nTo add a product, please upload the image/video and write the details in the **Caption** like this:\n\nADD_PROD\nProduct Title\nPrice\nDiscount\nDescription');
   }
@@ -314,18 +349,26 @@ bot.on('callback_query', async (query) => {
   const chatId = query.message?.chat.id;
   if (!data || !chatId) return;
 
-  if (data.startsWith('del_prod_')) {
-    const id = data.replace('del_prod_', '');
-    await deleteDoc(doc(db, 'products', id));
-    bot.sendMessage(chatId, 'Product deleted.');
-  } else if (data.startsWith('confirm_order_')) {
-    const id = data.replace('confirm_order_', '');
-    await updateDoc(doc(db, 'orders', id), { status: 'confirmed' });
-    bot.sendMessage(chatId, `Order confirmed.`);
-  } else if (data.startsWith('reject_order_')) {
-    const id = data.replace('reject_order_', '');
-    await updateDoc(doc(db, 'orders', id), { status: 'cancelled' });
-    bot.sendMessage(chatId, `Order cancelled.`);
+  try {
+    if (data.startsWith('del_prod_')) {
+      const id = data.replace('del_prod_', '');
+      await deleteDoc(doc(db, 'products', id));
+      bot.sendMessage(chatId, 'Product deleted.');
+    } else if (data.startsWith('del_ann_')) {
+      const id = data.replace('del_ann_', '');
+      await deleteDoc(doc(db, 'announcements', id));
+      bot.sendMessage(chatId, 'Announcement deleted successfully.');
+    } else if (data.startsWith('confirm_order_')) {
+      const id = data.replace('confirm_order_', '');
+      await updateDoc(doc(db, 'orders', id), { status: 'confirmed' });
+      bot.sendMessage(chatId, `Order confirmed.`);
+    } else if (data.startsWith('reject_order_')) {
+      const id = data.replace('reject_order_', '');
+      await updateDoc(doc(db, 'orders', id), { status: 'cancelled' });
+      bot.sendMessage(chatId, `Order cancelled.`);
+    }
+  } catch (e: any) {
+    bot.sendMessage(chatId, 'Error: ' + e.message);
   }
 });
 
