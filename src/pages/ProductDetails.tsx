@@ -88,7 +88,7 @@ export default function ProductDetails() {
               src={getMediaUrl(product.videoUrl || product.image)} 
               poster={product.image !== product.videoUrl ? getMediaUrl(product.image) : undefined}
               className="w-full h-full object-cover"
-              autoPlay loop muted playsInline controls
+              autoPlay loop muted playsInline controls preload="metadata"
             />
           ) : (
             <img 
@@ -96,6 +96,7 @@ export default function ProductDetails() {
               alt={product.title} 
               className="w-full h-full object-cover"
               referrerPolicy="no-referrer"
+              loading="lazy"
             />
           )}
           {product.discount > 0 && (

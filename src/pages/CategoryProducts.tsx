@@ -104,7 +104,7 @@ export default function CategoryProducts() {
                       src={product.videoUrl || product.image} 
                       poster={product.image !== product.videoUrl ? product.image : undefined}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      autoPlay loop muted playsInline
+                      autoPlay loop muted playsInline preload="metadata"
                     />
                   ) : (
                     <img 
@@ -112,6 +112,7 @@ export default function CategoryProducts() {
                       alt={product.title} 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       referrerPolicy="no-referrer"
+                      loading="lazy"
                     />
                   )}
                   {product.discount > 0 && (

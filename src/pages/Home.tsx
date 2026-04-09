@@ -43,6 +43,7 @@ export default function Home() {
             alt="Library" 
             className="w-full h-full object-cover opacity-40"
             referrerPolicy="no-referrer"
+            loading="lazy"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-stone-900 via-stone-900/80 to-transparent" />
         </div>
