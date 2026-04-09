@@ -49,7 +49,7 @@ export default function Search() {
           <p className="text-stone-500 text-lg">No products found matching your search.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-8">
           {products.map((product, i) => (
             <motion.div 
               key={product.id}
@@ -58,7 +58,7 @@ export default function Search() {
               transition={{ delay: i * 0.1 }}
             >
               <Link to={`/product/${product.id}`} className="group block">
-                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden mb-4 bg-stone-200 shadow-md group-hover:shadow-xl transition-all duration-300">
+                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden mb-2 sm:mb-4 bg-stone-200 shadow-md group-hover:shadow-xl transition-all duration-300">
                   {(product.videoUrl || product.mediaType === 'video') ? (
                     <video 
                       src={product.videoUrl || product.image} 
@@ -75,25 +75,25 @@ export default function Search() {
                     />
                   )}
                   {product.discount > 0 && (
-                    <div className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                    <div className="absolute top-2 left-2 sm:top-4 sm:left-4 bg-red-500 text-white text-[10px] sm:text-xs font-bold px-2 py-1 sm:px-3 sm:py-1 rounded-full">
                       -{product.discount}%
                     </div>
                   )}
                 </div>
-                <h3 className="font-serif font-bold text-xl group-hover:text-amber-700 transition-colors line-clamp-1">{product.title}</h3>
+                <h3 className="font-serif font-bold text-sm sm:text-xl group-hover:text-amber-700 transition-colors line-clamp-1">{product.title}</h3>
                 <div className="flex items-center gap-1 text-amber-500 my-1">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={16} fill="currentColor" />
+                    <Star key={i} size={12} className="sm:w-4 sm:h-4" fill="currentColor" />
                   ))}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                   {product.discount > 0 ? (
                     <>
-                      <span className="font-bold text-lg">৳{Math.round(product.price * (1 - product.discount / 100))}</span>
-                      <span className="text-sm text-stone-400 line-through">৳{product.price}</span>
+                      <span className="font-bold text-sm sm:text-lg">৳{Math.round(product.price * (1 - product.discount / 100))}</span>
+                      <span className="text-xs sm:text-sm text-stone-400 line-through">৳{product.price}</span>
                     </>
                   ) : (
-                    <span className="font-bold text-lg">৳{product.price}</span>
+                    <span className="font-bold text-sm sm:text-lg">৳{product.price}</span>
                   )}
                 </div>
               </Link>

@@ -13,6 +13,7 @@ const ADMIN_CODE = 'FRS1';
 // Store admin chat IDs in memory for simplicity, or we could store in Firestore
 const adminChats = new Set<number>();
 const pixelSetupState = new Set<number>();
+const announcementState = new Map<number, 'global' | 'category'>();
 
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 
@@ -84,8 +85,8 @@ bot.on('message', async (msg) => {
       reply_markup: {
         keyboard: [
           [{ text: 'Add Product' }, { text: 'List Products' }],
-          [{ text: 'View Orders (Today)' }, { text: 'View Announcements' }],
-          [{ text: 'Pixel Setup' }]
+          [{ text: 'View Orders (Today)' }, { text: 'Make Announcement' }],
+          [{ text: 'View Announcements' }, { text: 'Pixel Setup' }]
         ],
         resize_keyboard: true
       }
@@ -114,6 +115,57 @@ bot.on('message', async (msg) => {
   if (text === 'Pixel Setup') {
     pixelSetupState.add(chatId);
     bot.sendMessage(chatId, 'Please send your Facebook Pixel ID (e.g., 123456789012345):');
+    return;
+  }
+
+  if (announcementState.has(chatId)) {
+    const type = announcementState.get(chatId);
+    announcementState.delete(chatId);
+    
+    if (text === 'Cancel' || text === '/cancel') {
+      bot.sendMessage(chatId, 'Announcement cancelled.');
+      return;
+    }
+
+    try {
+      if (type === 'global') {
+        await addDoc(collection(db, 'announcements'), {
+          type: 'global',
+          message: text.trim(),
+          createdAt: new Date().toISOString()
+        });
+        bot.sendMessage(chatId, '✅ Global announcement added successfully!');
+      } else if (type === 'category') {
+        const lines = text.split('\n').map(l => l.trim());
+        if (lines.length < 2) {
+          bot.sendMessage(chatId, '❌ Invalid format. You must provide the category name on the first line and the message on the next lines.');
+          return;
+        }
+        const category = lines[0];
+        const message = lines.slice(1).join('\n').trim();
+        await addDoc(collection(db, 'announcements'), {
+          type: 'category',
+          category,
+          message,
+          createdAt: new Date().toISOString()
+        });
+        bot.sendMessage(chatId, `✅ Category announcement added successfully for ${category}!`);
+      }
+    } catch (e: any) {
+      bot.sendMessage(chatId, '❌ Error adding announcement: ' + e.message);
+    }
+    return;
+  }
+
+  if (text === 'Make Announcement') {
+    bot.sendMessage(chatId, 'What type of announcement do you want to make?', {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '🌍 Global (For everyone)', callback_data: 'make_ann_global' }],
+          [{ text: '📁 Category Specific', callback_data: 'make_ann_category' }]
+        ]
+      }
+    });
     return;
   }
 
@@ -350,7 +402,13 @@ bot.on('callback_query', async (query) => {
   if (!data || !chatId) return;
 
   try {
-    if (data.startsWith('del_prod_')) {
+    if (data === 'make_ann_global') {
+      announcementState.set(chatId, 'global');
+      bot.sendMessage(chatId, 'Please send the Global Announcement message now.\n\n(Type "Cancel" to abort)');
+    } else if (data === 'make_ann_category') {
+      announcementState.set(chatId, 'category');
+      bot.sendMessage(chatId, 'Please send the Category Announcement in this format:\n\nCategory Name\nYour announcement message here\n\n(Type "Cancel" to abort)');
+    } else if (data.startsWith('del_prod_')) {
       const id = data.replace('del_prod_', '');
       await deleteDoc(doc(db, 'products', id));
       bot.sendMessage(chatId, 'Product deleted.');
